@@ -27,7 +27,7 @@ valset = GLaSDataLoader((25, 25), dataset_repeat=1, images=val_img_idr, masks=va
 
 trainloader = torch.utils.data.DataLoader(trainset, batch_size=1, shuffle=True, num_workers=10)
 valloader = torch.utils.data.DataLoader(valset, batch_size=1, shuffle=False, num_workers=10)
-writer = SummaryWriter('runs/fashion_mnist_experiment_1')
+writer = SummaryWriter('runs/zernik_coff')
 
 #try:
 device = torch.device('cuda')
@@ -55,8 +55,12 @@ torch.backends.cudnn.benchmark = True
 losses = []
 val_losses = []
 nfe = [[],[],[],[],[],[],[],[],[]]# if TRAIN_UNODE else None
-
-accumulate_batch = 3  # mini-batch size by gradient accumulation
+try:
+    torch.load(net, filename)
+    print("loaded pretrained model")
+except:
+    print("no pretrained model")
+accumulate_batch = 1  # mini-batch size by gradient accumulation
 accumulated = 0
 
 filename = 'best_border_unode_model.pt'
@@ -67,13 +71,15 @@ def run(lr=1e-3, epochs=100):
         param_group['lr'] = lr
     count = 0
     prev_loss = 10000000
+
     for epoch in range(epochs):
-        
+        e_count = 0    
         # training loop with gradient accumulation
         running_loss = 0.0
         optimizer.zero_grad()
         
         for data in tqdm(trainloader):
+            e_count = e_count + 1
             inputs, labels = data[0].cuda(), data[1].cuda()
             outputs = net(inputs)
             loss = criterion(outputs, labels) / accumulate_batch
@@ -87,7 +93,10 @@ def run(lr=1e-3, epochs=100):
             running_loss += loss.item() * accumulate_batch
             count = count + 1
             if (count % 1000) == 0 :
-                writer.add_scalar('training_loss', running_loss / len(trainloader), count )
+                writer.add_scalar('training_loss', running_loss / e_count, (count/1000) )
+                if prev_loss >= (running_loss / e_count):
+                    print("model saved")
+                    torch.save(net, filename)
 
         losses.append(running_loss / len(trainloader))
         
