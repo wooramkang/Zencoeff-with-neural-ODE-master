@@ -1,4 +1,7 @@
 Zernik_images/*
 Zernik_label/*
+val_Zernik_images/*
+val_Zernik_label/*
 runs/*
 tensorboard.sh
+*.pt

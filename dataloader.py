@@ -11,9 +11,9 @@ import scipy.ndimage
 #cv2.setNumThreads(0)
 
 class GLaSDataLoader(object):
-    def __init__(self, patch_size, dataset_repeat=1, images=np.arange(0, 70), masks = np.arange(0, 70), validation=False, in_dim=3, out_dim=8, out_class=1):
-        self.image_fname = 'Zernik_images/'
-        self.mask_fname = 'Zernik_label/'
+    def __init__(self, patch_size, dataset_repeat=1, images=np.arange(0, 70), masks = np.arange(0, 70), validation=False, in_dim=3, out_dim=8, out_class=1, Image_fname ='Zernik_images/', Mask_fname ='Zernik_label/'):
+        self.image_fname = Image_fname #'Zernik_images/'
+        self.mask_fname = Mask_fname #'Zernik_label/'
         self.images = images
         self.masks = masks
         self.out_dim = 8
@@ -53,9 +53,10 @@ class GLaSDataLoader(object):
             index = 1
         if index > 30000:
             index = 30000
-
-        image = self.image_fname + str(index) + '.TIFF'
-        mask = self.mask_fname + str(index) + '.label'
+        #self.images = images
+        #self.masks = masks
+        image = self.image_fname + str(self.images[index])# + '.TIFF'
+        mask = self.mask_fname + str(self.masks[index])# + '.label'
         return image, mask
 
     def img_open(self, image, mask):

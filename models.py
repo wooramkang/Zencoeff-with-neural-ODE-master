@@ -93,14 +93,14 @@ class ConvODEUNet(nn.Module):
         ode_up4 = ConvODEFunc(nf, time_dependent, non_linearity)
         self.odeblock_up4 = ODEBlock(ode_up4, tol=tol, adjoint=adjoint)
 
-        self.classifier = nn.Conv2d(nf, output_dim, 1)
-        
-        self.dense = nn.Linear(2**8, 2**8)
-        self.finaloutput = nn.Linear(2**8, 10)
+        self.dense = nn.Linear(nf * (2**4) , nf * (2**4))
+        self.preoutput = nn.Linear(nf * (2**4), output_dim)
+        self.finaloutput = nn.Linear(output_dim, output_dim)
         self.tanh = nn.Tanh()
         self.flatten = nn.Flatten()
         self.non_linearity = get_nonlinearity(non_linearity)
-        
+        #self.classifier = nn.Conv2d(nf, output_dim, 1)        
+
     def forward(self, x, return_features=False):
         x = self.non_linearity(self.input_1x1(x))
         # 32 16 8 4 2
@@ -128,9 +128,11 @@ class ConvODEUNet(nn.Module):
         x = self.dense(x)
         x = self.non_linearity(x)
         
-        x = self.finaloutput(x)
-        pred = self.tanh(x)
+        x = self.preoutput(x)
+        x = self.tanh(x)
 
+        pred = self.finaloutput(x)
+        
         '''
         x = nn.functional.interpolate(x, scale_factor=2, mode='bilinear', align_corners=False)
         x = torch.cat((x, features4), dim=1)

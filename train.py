@@ -19,14 +19,14 @@ from train_utils import plot_losses
 torch.manual_seed(0)
 train_img_idr = os.listdir('Zernik_images/')
 train_mask_idr = os.listdir('Zernik_label/')
-val_img_idr = os.listdir('Zernik_images/')
-val_mask_idr = os.listdir('Zernik_label/')
+val_img_idr = os.listdir('val_Zernik_images/')
+val_mask_idr = os.listdir('val_Zernik_label/')
 
-trainset = GLaSDataLoader((25, 25), dataset_repeat=1, images=train_img_idr, masks=train_mask_idr)
-valset = GLaSDataLoader((25, 25), dataset_repeat=1, images=val_img_idr, masks=val_mask_idr ,validation=True)
-
-trainloader = torch.utils.data.DataLoader(trainset, batch_size=1, shuffle=True, num_workers=10)
-valloader = torch.utils.data.DataLoader(valset, batch_size=1, shuffle=False, num_workers=10)
+trainset = GLaSDataLoader((25, 25), dataset_repeat=1, images=train_img_idr, masks=train_mask_idr, Image_fname ='Zernik_images/', Mask_fname ='Zernik_label/')
+valset = GLaSDataLoader((25, 25), dataset_repeat=1, images=val_img_idr, masks=val_mask_idr ,validation=True, Image_fname ='val_Zernik_images/', Mask_fname ='val_Zernik_label/')
+BATCH_SIZE = 12
+trainloader = torch.utils.data.DataLoader(trainset, batch_size=BATCH_SIZE, shuffle=True, num_workers=4)
+valloader = torch.utils.data.DataLoader(valset, batch_size=BATCH_SIZE, shuffle=False, num_workers=4)
 writer = SummaryWriter('runs/zernik_coff')
 
 #try:
@@ -56,30 +56,34 @@ losses = []
 val_losses = []
 nfe = [[],[],[],[],[],[],[],[],[]]# if TRAIN_UNODE else None
 filename = 'best_DD_model.pt'
-#try:
-net = torch.load(filename)
-print("loaded pretrained model")
-#except:
-#    print("no pretrained model")
+
+try:
+    #net = torch.load(filename)
+    print("loaded pretrained model")
+except:
+    print("no pretrained model")
+
 accumulate_batch = 1  # mini-batch size by gradient accumulation
 accumulated = 0
 
 
 def run(lr=1e-3, epochs=100):
     accumulated = 0
+    step_size = 500
     for param_group in optimizer.param_groups:
         param_group['lr'] = lr
     count = 0
     prev_loss = 10000000
 
     for epoch in range(epochs):
-        e_count = 0    
         # training loop with gradient accumulation
+        e_count = 0    
         running_loss = 0.0
         optimizer.zero_grad()
         
         for data in tqdm(trainloader):
             e_count = e_count + 1
+            count = count + 1
             inputs, labels = data[0].cuda(), data[1].cuda()
             outputs = net(inputs)
             loss = criterion(outputs, labels) / accumulate_batch
@@ -91,33 +95,36 @@ def run(lr=1e-3, epochs=100):
                 accumulated = 0
 
             running_loss += loss.item() * accumulate_batch
-            count = count + 1
-            if (count % 1000) == 0 :
-                writer.add_scalar('training_loss', running_loss / e_count, (count/1000) )
-                if prev_loss >= (running_loss / e_count):
+
+            if (count % step_size) == 0:
+                writer.add_scalar('training_loss', (running_loss / e_count)/BATCH_SIZE, (count/step_size) )
+
+                if prev_loss >= ((running_loss / e_count)/BATCH_SIZE):
                     print("model saved")
                     torch.save(net, filename)
+                    prev_loss = ((running_loss / e_count)/BATCH_SIZE)
+
                 running_loss = 0.0
                 e_count = 0
 
-        # validation loop
-        
-        with torch.no_grad():
-            running_loss = 0.0
-            for data in valloader:
-                inputs, labels = data[0].cuda(), data[1].cuda()
-                outputs = net(inputs)
-                loss = criterion(outputs, labels)
-                running_loss += loss.item()
+                # validation loop
+                with torch.no_grad():
+                    running_loss = 0.0
+                    for data in valloader:
+                        inputs, labels = data[0].cuda(), data[1].cuda()
+                        outputs = net(inputs)
+                        loss = criterion(outputs, labels)
+                        running_loss += loss.item()
 
-            val_losses.append(running_loss / len(valloader))
-            writer.add_scalar('validation_loss', running_loss / len(valloader), epoch )
+                    val_losses.append(running_loss / len(valloader))
 
-            if prev_loss >= (running_loss / len(valloader)):
-                torch.save(net, filename)
+                    writer.add_scalar('validation_loss', running_loss / len(valloader), (count/step_size) )
+
+                    #if prev_loss >= (running_loss / len(valloader)):
+                        #print("model saved")
+                        #torch.save(net, filename)
+                        #prev_loss = (running_loss / len(valloader))
                 
-            #clear_output(wait=True)
-            #plot_losses(inputs, outputs, losses, val_losses, "UNODE", nfe, net=net)
         '''
         # test result loop
         index = 0
@@ -134,20 +141,7 @@ def run(lr=1e-3, epochs=100):
                     gt = data[1]
                     with torch.no_grad():
                         result, input_image = inference_image(net, image)#, shouldpad=TRAIN_UNET)
-                        result = postprocess(result, gt)
-                    if col == 0:
-                        ax[row, col].imshow(image)
-                    elif col == 1:
-                        ax[row, col].imshow(np.array(gt) > 0)
-                    else:
-                        ax[row, col].imshow(image)
-                        ax[row, col].imshow(result, alpha=0.5)
-                            
-                    ax[row, col].set_axis_off()
-
-            plt.savefig("output/"+str(index)+"_result.png")
         '''
-
 lr = 1e-3 
 run(lr, 600 - len(losses))
 
