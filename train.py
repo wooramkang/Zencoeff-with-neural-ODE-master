@@ -117,13 +117,13 @@ def run(lr=1e-3, epochs=100):
                         #print(data[1].shape)
                         inputs, labels = data[0].cuda(), data[1].cuda()
                         outputs = net(inputs)
-                        #print(outputs.cpu().clone().numpy().shape)
+                        print(outputs.cpu().clone().numpy().shape)
                         loss = criterion(outputs, labels)
                         cos_similarity = cosine_similarity(outputs, labels, dim=1)
                         cos_similarity = cos_similarity.cpu().clone().numpy()
-                        #print(cos_similarity)
-                        cos_similarity = np.absolute(cos_similarity)
-                        cos_similarity = np.sum(cos_similarity) / output_dim
+                        print(cos_similarity)
+                        cos_similarity = np.sum(np.absolute(cos_similarity))/ VAL_BATCH_SIZE
+                        print(cos_similarity)
                         cos_all = cos_all + cos_similarity
                         running_loss += loss.item()
 
