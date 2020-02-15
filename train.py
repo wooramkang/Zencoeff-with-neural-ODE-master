@@ -34,7 +34,7 @@ device = torch.device('cuda')
 #except:
     #device = torch.device('cpu')
 
-net = ConvODEUNet(num_filters=4, output_dim=8, time_dependent=True, non_linearity='lrelu', adjoint=True, tol=1e-3)
+net = ConvODEUNet(num_filters=16, output_dim=10, time_dependent=True, non_linearity='lrelu', adjoint=True, tol=1e-3)
 net.to(device)
 
 for m in net.modules():
@@ -55,15 +55,15 @@ torch.backends.cudnn.benchmark = True
 losses = []
 val_losses = []
 nfe = [[],[],[],[],[],[],[],[],[]]# if TRAIN_UNODE else None
-try:
-    torch.load(net, filename)
-    print("loaded pretrained model")
-except:
-    print("no pretrained model")
+filename = 'best_DD_model.pt'
+#try:
+net = torch.load(filename)
+print("loaded pretrained model")
+#except:
+#    print("no pretrained model")
 accumulate_batch = 1  # mini-batch size by gradient accumulation
 accumulated = 0
 
-filename = 'best_border_unode_model.pt'
 
 def run(lr=1e-3, epochs=100):
     accumulated = 0
@@ -97,9 +97,9 @@ def run(lr=1e-3, epochs=100):
                 if prev_loss >= (running_loss / e_count):
                     print("model saved")
                     torch.save(net, filename)
+                running_loss = 0.0
+                e_count = 0
 
-        losses.append(running_loss / len(trainloader))
-        
         # validation loop
         
         with torch.no_grad():

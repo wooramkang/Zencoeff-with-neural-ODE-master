@@ -95,8 +95,8 @@ class ConvODEUNet(nn.Module):
 
         self.classifier = nn.Conv2d(nf, output_dim, 1)
         
-        self.dense = nn.Linear(2**6, 2**6)
-        self.finaloutput = nn.Linear(2**6, 10)
+        self.dense = nn.Linear(2**8, 2**8)
+        self.finaloutput = nn.Linear(2**8, 10)
         self.tanh = nn.Tanh()
         self.flatten = nn.Flatten()
         self.non_linearity = get_nonlinearity(non_linearity)
@@ -122,9 +122,12 @@ class ConvODEUNet(nn.Module):
         x = nn.functional.interpolate(x, scale_factor=0.5, mode='bilinear', align_corners=False)
 
         x = self.odeblock_embedding(x)  
+        x = self.non_linearity(x)
+        
         x = self.flatten(x)
         x = self.dense(x)
         x = self.non_linearity(x)
+        
         x = self.finaloutput(x)
         pred = self.tanh(x)
 
