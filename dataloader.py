@@ -49,10 +49,10 @@ class GLaSDataLoader(object):
 
     def index_to_filename(self, index):
         """Helper function to retrieve filenames from index"""
-        if index == 0:
-            index = 1
-        if index > 30000:
-            index = 30000
+        #if index == 0:
+            #index = 1
+        #if index > 30000:
+            #index = 30000
         #self.images = images
         #self.masks = masks
         image = self.image_fname + str(self.images[index])# + '.TIFF'
