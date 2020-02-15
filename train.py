@@ -29,10 +29,10 @@ trainloader = torch.utils.data.DataLoader(trainset, batch_size=1, shuffle=True, 
 valloader = torch.utils.data.DataLoader(valset, batch_size=1, shuffle=False, num_workers=10)
 writer = SummaryWriter('runs/fashion_mnist_experiment_1')
 
-try:
-    device = torch.device('cuda')
-except:
-    device = torch.device('cpu')
+#try:
+device = torch.device('cuda')
+#except:
+    #device = torch.device('cpu')
 
 net = ConvODEUNet(num_filters=4, output_dim=8, time_dependent=True, non_linearity='lrelu', adjoint=True, tol=1e-3)
 net.to(device)
@@ -56,7 +56,7 @@ losses = []
 val_losses = []
 nfe = [[],[],[],[],[],[],[],[],[]]# if TRAIN_UNODE else None
 
-accumulate_batch = 8  # mini-batch size by gradient accumulation
+accumulate_batch = 3  # mini-batch size by gradient accumulation
 accumulated = 0
 
 filename = 'best_border_unode_model.pt'

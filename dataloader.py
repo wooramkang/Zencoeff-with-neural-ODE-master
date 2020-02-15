@@ -1,20 +1,19 @@
 import random
 import pickle
-from augmentations import ElasticTransformations, RandomRotationWithMask
-
-import cv2
+#from augmentations import ElasticTransformations, RandomRotationWithMask
+#import cv2
 import PIL
 import torch
 import numpy as np
 import torchvision
 import scipy.ndimage
 
-cv2.setNumThreads(0)
+#cv2.setNumThreads(0)
 
 class GLaSDataLoader(object):
     def __init__(self, patch_size, dataset_repeat=1, images=np.arange(0, 70), masks = np.arange(0, 70), validation=False, in_dim=3, out_dim=8, out_class=1):
-        self.image_fname = 'train_img/'
-        self.mask_fname = 'train_mask/'
+        self.image_fname = 'Zernik_images/'
+        self.mask_fname = 'Zernik_label/'
         self.images = images
         self.masks = masks
         self.out_dim = 8
@@ -28,8 +27,8 @@ class GLaSDataLoader(object):
             torchvision.transforms.ToPILImage(),
             torchvision.transforms.RandomHorizontalFlip(),
             torchvision.transforms.RandomVerticalFlip(),
-            RandomRotationWithMask(45, resample=False, expand=False, center=None),
-            ElasticTransformations(2000, 60),
+            #RandomRotationWithMask(45, resample=False, expand=False, center=None),
+            #ElasticTransformations(2000, 60),
             torchvision.transforms.ToTensor()
         ])
         self.image_transforms = torchvision.transforms.Compose([
@@ -41,7 +40,7 @@ class GLaSDataLoader(object):
     def __getitem__(self, index):
         image, mask = self.index_to_filename(index)
         image, mask = self.img_open(image, mask)
-        return patch, mask
+        return image, mask
         #image, mask = self.pad_image(image, mask)
         #label, patch = self.apply_data_augmentation(image, mask)
         #label = self.create_eroded_mask(label, mask)
@@ -50,14 +49,13 @@ class GLaSDataLoader(object):
 
     def index_to_filename(self, index):
         """Helper function to retrieve filenames from index"""
-        index_img = index // self.repeat
-        index_img = self.images[index_img]
-        index_str = str(index_img.item())
-        image = self.image_fname + index_str# + '.TIFF'
-        index_img = index // self.repeat
-        index_img = self.masks[index_img]
-        index_str = str(index_img.item())
-        mask = self.mask_fname + index_str# + '.label'
+        if index == 0:
+            index = 1
+        if index > 30000:
+            index = 30000
+
+        image = self.image_fname + str(index) + '.TIFF'
+        mask = self.mask_fname + str(index) + '.label'
         return image, mask
 
     def img_open(self, image, mask):
@@ -65,10 +63,17 @@ class GLaSDataLoader(object):
         image = PIL.Image.open(image)
         #image = image.resize((32, 32))
         file = open(mask, 'r')
-        mask =  int(str(file.readline()).split(','))
+        mask =  str(file.readline())[:-2].split(',')
         file.close()
+        mask = [float(i) for i in mask]
+        
         image = np.array(image)
+        image = np.expand_dims(image, axis=0)
+        image = image.astype(float)
         mask = np.array(mask)
+        image = torch.from_numpy(np.array(image)).float()
+        mask = torch.from_numpy(np.array(mask)).float()
+
         return image, mask
 
     def pad_image(self, image, mask):

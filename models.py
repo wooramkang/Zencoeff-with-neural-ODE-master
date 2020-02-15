@@ -56,7 +56,7 @@ class ConvODEUNet(nn.Module):
         super(ConvODEUNet, self).__init__()
         nf = num_filters
 
-        self.input_1x1 = nn.Conv2d(3, nf, 1, 1)
+        self.input_1x1 = nn.Conv2d(1, nf, 1, 1)
 
         ode_down1 = ConvODEFunc(nf, time_dependent, non_linearity)
         self.odeblock_down1 = ODEBlock(ode_down1, tol=tol, adjoint=adjoint)
@@ -95,8 +95,8 @@ class ConvODEUNet(nn.Module):
 
         self.classifier = nn.Conv2d(nf, output_dim, 1)
         
-        self.dense = nn.Linear(nf, nf)
-        self.finaloutput = nn.Linear(nf, 10)
+        self.dense = nn.Linear(2**6, 2**6)
+        self.finaloutput = nn.Linear(2**6, 10)
         self.tanh = nn.Tanh()
         self.flatten = nn.Flatten()
         self.non_linearity = get_nonlinearity(non_linearity)
