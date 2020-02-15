@@ -24,11 +24,19 @@ val_mask_idr = os.listdir('val_Zernik_label/')
 
 trainset = GLaSDataLoader((25, 25), dataset_repeat=1, images=train_img_idr, masks=train_mask_idr, Image_fname ='Zernik_images/', Mask_fname ='Zernik_label/')
 valset = GLaSDataLoader((25, 25), dataset_repeat=1, images=val_img_idr, masks=val_mask_idr ,validation=True, Image_fname ='val_Zernik_images/', Mask_fname ='val_Zernik_label/')
-BATCH_SIZE = 12
+BATCH_SIZE = 20
 VAL_BATCH_SIZE = 100
 trainloader = torch.utils.data.DataLoader(trainset, batch_size=BATCH_SIZE, shuffle=True, num_workers=4)
 valloader = torch.utils.data.DataLoader(valset, batch_size=VAL_BATCH_SIZE, shuffle=True, num_workers=4)
-writer = SummaryWriter('runs/zernik_coff')
+
+i = 0
+
+while(1):
+    i = i + 1
+    tfboard_path = 'runs/zernik_coff_' + str(i)
+    if not os.path.exists(tfboard_path):
+        writer = SummaryWriter('runs/zernik_coff')
+        break
 
 #try:
 device = torch.device('cuda')
@@ -117,13 +125,19 @@ def run(lr=1e-3, epochs=100):
                         #print(data[1].shape)
                         inputs, labels = data[0].cuda(), data[1].cuda()
                         outputs = net(inputs)
-                        print(outputs.cpu().clone().numpy().shape)
+                        #print(outputs.cpu().clone().numpy().shape)
                         loss = criterion(outputs, labels)
+                        outputs = outputs.cpu().clone().numpy()
+                        outputs = (outputs + 1) / 2
+                        outputs = outputs.cuda()
+                        labels = labels.cpu().clone().numpy()
+                        labels = (labels + 1) / 2
+                        labels = labels.cuda()
                         cos_similarity = cosine_similarity(outputs, labels, dim=1)
                         cos_similarity = cos_similarity.cpu().clone().numpy()
-                        print(cos_similarity)
+                        #print(cos_similarity)
                         cos_similarity = np.sum(np.absolute(cos_similarity))/ VAL_BATCH_SIZE
-                        print(cos_similarity)
+                        #print(cos_similarity)
                         cos_all = cos_all + cos_similarity
                         running_loss += loss.item()
 
