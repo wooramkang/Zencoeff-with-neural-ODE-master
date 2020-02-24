@@ -29,7 +29,7 @@ VAL_BATCH_SIZE = 500
 trainloader = torch.utils.data.DataLoader(trainset, batch_size=BATCH_SIZE, shuffle=True, num_workers=4)
 valloader = torch.utils.data.DataLoader(valset, batch_size=VAL_BATCH_SIZE, shuffle=True, num_workers=4)
 
-i = 4
+i = 5
 tfboard_path = 'runs/zernik_coff_' + str(i)
 writer = SummaryWriter(tfboard_path)
 
@@ -59,7 +59,8 @@ torch.backends.cudnn.benchmark = True
 losses = []
 val_losses = []
 nfe = [[],[],[],[],[],[],[],[],[]]# if TRAIN_UNODE else None
-filename = 'best_DD_model_third.pt'
+#filename = 'best_DD_model_third.pt'
+filename = 'best_DD_model_fourth.pt'
 from torch.nn.functional import cosine_similarity
 
 try:
@@ -74,7 +75,7 @@ accumulated = 0
 
 def run(lr, epochs=10):
     accumulated = 0
-    step_size = 50
+    step_size = 20
     for param_group in optimizer.param_groups:
         param_group['lr'] = lr
     count = 0
@@ -155,8 +156,8 @@ def run(lr, epochs=10):
                         torch.save(net, filename)
                         prev_loss = (running_loss / len(valloader))
                 
-#lr = 1e-3
+lr = 1e-3
 #epochs = 600 - len(losses)
-lr = 1e-5
-epochs = 10
+#lr = 1e-6
+epochs = 100
 run(lr, epochs)

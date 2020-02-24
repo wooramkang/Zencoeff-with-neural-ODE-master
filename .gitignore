@@ -6,3 +6,4 @@ runs/*
 tensorboard.sh
 *.pt
 *.zip
+*.png
