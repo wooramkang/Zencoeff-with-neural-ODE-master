@@ -37,7 +37,7 @@ writer = SummaryWriter(tfboard_path)
 device = torch.device('cuda')
 #except:
     #device = torch.device('cpu')
-output_dim = 20
+output_dim = 10 # ex) 30, 28, 10, ... maximum of NOLL index 
 net = ConvODEUNet(num_filters=32, output_dim=output_dim, time_dependent=True, non_linearity='lrelu', adjoint=True, tol=1e-9)
 net.to(device)
 
@@ -94,16 +94,16 @@ def run(lr, epochs=10):
             outputs = net(inputs)
             loss = criterion(outputs, labels) / accumulate_batch
             RMSEloss = torch.sqrt(MSE(outputs, labels)) #/ accumulate_batch                       
-            RMSEloss.backward()
-            #loss.backward()
+            #RMSEloss.backward()
+            loss.backward()
             accumulated += 1
             if accumulated == accumulate_batch:
                 optimizer.step()
                 optimizer.zero_grad()
                 accumulated = 0
 
-            #running_loss += loss.item() * accumulate_batch
-            running_loss += RMSEloss.item() * accumulate_batch
+            running_loss += loss.item() * accumulate_batch
+            #running_loss += RMSEloss.item() * accumulate_batch
             if (count % step_size) == 0:
                 writer.add_scalar('training_loss', (running_loss / e_count)/BATCH_SIZE, (count/step_size) )
 
