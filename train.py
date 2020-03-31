@@ -11,34 +11,34 @@ import numpy as np
 import matplotlib.pyplot as plt
 
 from tqdm import tqdm, tqdm_notebook
-from inference_utils import inference_image, postprocess
 from models import ConvODEUNet, ConvResUNet, ODEBlock, Unet
 from dataloader import GLaSDataLoader
-from train_utils import plot_losses
 
 torch.manual_seed(0)
-train_img_idr = os.listdir('Zernik_images/')
-train_mask_idr = os.listdir('Zernik_label/')
-val_img_idr = os.listdir('val_Zernik_images/')
-val_mask_idr = os.listdir('val_Zernik_label/')
+train_img_idr = os.listdir('/project/NANOSCOPY/Submit/Submit/image_integ/')
+train_mask_idr = os.listdir('/project/NANOSCOPY/Submit/Submit/Zen_integ/')
+val_img_idr = os.listdir('/project/NANOSCOPY/Submit/Submit/image_integ_val/')
+val_mask_idr = os.listdir('/project/NANOSCOPY/Submit/Submit/Zen_integ_val/')
 
-trainset = GLaSDataLoader((25, 25), dataset_repeat=1, images=train_img_idr, masks=train_mask_idr, Image_fname ='Zernik_images/', Mask_fname ='Zernik_label/')
-valset = GLaSDataLoader((25, 25), dataset_repeat=1, images=val_img_idr, masks=val_mask_idr ,validation=True, Image_fname ='val_Zernik_images/', Mask_fname ='val_Zernik_label/')
+trainset = GLaSDataLoader((25, 25), dataset_repeat=1, images=train_img_idr, masks=train_mask_idr, Image_fname ='/project/NANOSCOPY/Submit/Submit/image_integ/', 
+                        Mask_fname ='/project/NANOSCOPY/Submit/Submit/Zen_integ/')
+valset = GLaSDataLoader((25, 25), dataset_repeat=1, images=val_img_idr, masks=val_mask_idr ,validation=True, Image_fname ='/project/NANOSCOPY/Submit/Submit/image_integ_val/',
+                        Mask_fname ='/project/NANOSCOPY/Submit/Submit/Zen_integ_val/')
 BATCH_SIZE = 3 # The Auther of the paper neural ODE said training with batch is not sure 
 VAL_BATCH_SIZE = 500
 trainloader = torch.utils.data.DataLoader(trainset, batch_size=BATCH_SIZE, shuffle=True, num_workers=4)
 valloader = torch.utils.data.DataLoader(valset, batch_size=VAL_BATCH_SIZE, shuffle=True, num_workers=4)
 
-i = 5
-tfboard_path = 'runs/zernik_coff_' + str(i)
+i = 1
+tfboard_path = 'runs/new_zernik_coff_' + str(i)
 writer = SummaryWriter(tfboard_path)
 
 #try:
 device = torch.device('cuda')
 #except:
     #device = torch.device('cpu')
-output_dim = 10 # ex) 30, 28, 10, ... maximum of NOLL index 
-net = ConvODEUNet(num_filters=32, output_dim=output_dim, time_dependent=True, non_linearity='lrelu', adjoint=True, tol=1e-9)
+output_dim = 28 # ex) 30, 28, 10, ... maximum of NOLL index 
+net = ConvODEUNet(num_filters=32, output_dim=output_dim, time_dependent=True, non_linearity='lrelu', adjoint=True, tol=1e-7)
 net.to(device)
 
 for m in net.modules():
@@ -56,11 +56,8 @@ val_criterion = torch.nn.BCEWithLogitsLoss()
 MSE = torch.nn.MSELoss()
 optimizer = torch.optim.Adam(net.parameters(), lr=1e-4)
 torch.backends.cudnn.benchmark = True
-losses = []
-val_losses = []
-nfe = [[],[],[],[],[],[],[],[],[]]# if TRAIN_UNODE else None
-#filename = 'best_DD_model_third.pt'
-filename = 'best_DD_model_fourth.pt'
+
+filename = 'best_retriaval_model.pt'
 from torch.nn.functional import cosine_similarity
 
 try:
@@ -69,7 +66,6 @@ try:
 except:
     print("no pretrained model")
 
-filename = 'best_DD_model_fourth.pt'
 accumulate_batch = 1  # mini-batch size by gradient accumulation
 accumulated = 0
 
@@ -93,7 +89,7 @@ def run(lr, epochs=10):
             inputs, labels = data[0].cuda(), data[1].cuda()
             outputs = net(inputs)
             loss = criterion(outputs, labels) / accumulate_batch
-            RMSEloss = torch.sqrt(MSE(outputs, labels)) #/ accumulate_batch                       
+            #RMSEloss = torch.sqrt(MSE(outputs, labels)) #/ accumulate_batch                       
             #RMSEloss.backward()
             loss.backward()
             accumulated += 1

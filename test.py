@@ -11,16 +11,14 @@ import numpy as np
 import matplotlib.pyplot as plt
 
 from tqdm import tqdm, tqdm_notebook
-from inference_utils import inference_image, postprocess
 from models import ConvODEUNet, ConvResUNet, ODEBlock, Unet
 from dataloader import GLaSDataLoader
-from train_utils import plot_losses
 
 torch.manual_seed(0)
-train_img_idr = os.listdir('Zernik_images/')
-train_mask_idr = os.listdir('Zernik_label/')
-val_img_idr = os.listdir('val_Zernik_images/')
-val_mask_idr = os.listdir('val_Zernik_label/')
+train_img_idr = os.listdir('/project/NANOSCOPY/Submit/Submit/image_integ/')
+train_mask_idr = os.listdir('/project/NANOSCOPY/Submit/Submit/Zen_integ/')
+val_img_idr = os.listdir('/project/NANOSCOPY/Submit/Submit/image_integ_val/')
+val_mask_idr = os.listdir('/project/NANOSCOPY/Submit/Submit/Zen_integ_val/')
 
 valset = GLaSDataLoader((25, 25), dataset_repeat=1, images=val_img_idr, masks=val_mask_idr ,validation=True, Image_fname ='val_Zernik_images/', Mask_fname ='val_Zernik_label/')
 VAL_BATCH_SIZE = 50
@@ -30,7 +28,7 @@ valloader = torch.utils.data.DataLoader(valset, batch_size=VAL_BATCH_SIZE, shuff
 device = torch.device('cuda')
 #except:
     #device = torch.device('cpu')
-output_dim = 10
+output_dim = 28
 net = ConvODEUNet(num_filters=32, output_dim=output_dim, time_dependent=True, non_linearity='lrelu', adjoint=True, tol=1e-9)
 net.to(device)
 
@@ -52,8 +50,9 @@ torch.backends.cudnn.benchmark = True
 losses = []
 val_losses = []
 nfe = [[],[],[],[],[],[],[],[],[]]# if TRAIN_UNODE else None
-filename = 'best_DD_model_second.pt'
-#filename = 'best_DD_model_fourth.pt'
+i = 1
+tfboard_path = 'runs/new_zernik_coff_' + str(i)
+
 from torch.nn.functional import cosine_similarity
 
 try:
