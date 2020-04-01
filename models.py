@@ -76,7 +76,7 @@ class ConvODEUNet(nn.Module):
 
         ode_embed = ConvODEFunc(nf*16, time_dependent, non_linearity)
         self.odeblock_embedding = ODEBlock(ode_embed,  tol=tol, adjoint=adjoint)
-    
+        '''
         self.conv_up_embed_1 = nn.Conv2d(nf*16+nf*8, nf*8, 1, 1)
         ode_up1 = ConvODEFunc(nf*8, time_dependent, non_linearity)
         self.odeblock_up1 = ODEBlock(ode_up1, tol=tol, adjoint=adjoint)
@@ -92,7 +92,7 @@ class ConvODEUNet(nn.Module):
         self.conv_up3_4 = nn.Conv2d(nf*2+nf, nf, 1, 1)
         ode_up4 = ConvODEFunc(nf, time_dependent, non_linearity)
         self.odeblock_up4 = ODEBlock(ode_up4, tol=tol, adjoint=adjoint)
-
+        '''
         self.dense = nn.Linear(nf * (2**4) , nf * (2**4))
         self.preoutput = nn.Linear(nf * (2**4), output_dim)
         self.finaloutput = nn.Linear(output_dim, output_dim)

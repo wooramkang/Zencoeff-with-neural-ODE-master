@@ -69,9 +69,9 @@ except:
 accumulate_batch = 1  # mini-batch size by gradient accumulation
 accumulated = 0
 
-def run(lr, epochs=10):
+def run(lr, epochs=100):
     accumulated = 0
-    step_size = 20
+    step_size = 2000
     for param_group in optimizer.param_groups:
         param_group['lr'] = lr
     count = 0
@@ -101,6 +101,7 @@ def run(lr, epochs=10):
             running_loss += loss.item() * accumulate_batch
             #running_loss += RMSEloss.item() * accumulate_batch
             if (count % step_size) == 0:
+                #print((running_loss / e_count)/BATCH_SIZE)
                 writer.add_scalar('training_loss', (running_loss / e_count)/BATCH_SIZE, (count/step_size) )
 
                 #if prev_loss >= ((running_loss / e_count)/BATCH_SIZE):
@@ -142,7 +143,7 @@ def run(lr, epochs=10):
 
                     cos_all = cos_all / len(valloader)
                     print(cos_all)
-                    val_losses.append(running_loss / len(valloader))
+                    #val_losses.append(running_loss / len(valloader))
                     writer.add_scalar('validation_RMSEloss', total_RMSE / len(valloader), (count/step_size) )
                     writer.add_scalar('validation_loss', running_loss / len(valloader), (count/step_size) )
                     writer.add_scalar('cosine_similarity', cos_all, (count/step_size))
