@@ -45,13 +45,18 @@ class GLaSDataLoader(object):
 
     def img_open(self, image, mask):
         image = np.load(image)
+        img_shape = image.shape
+        print(img_shape)
         file = open(mask, 'r')
         mask =  str(file.readline())[:-2].split(',')
         file.close()
         mask = [float(i) for i in mask]
         image = image.astype(float)
         mask = np.array(mask)
-        image = torch.from_numpy(np.array(image)).float()
+        poi_noise = (np.random.poisson(16, img_shape)/ (img_shape[0] * img_shape[1]* img_shape[2]))
+        #print(poi_noise)   
+        image = image + poi_noise
+        image = torch.from_numpy(np.array(image)).float()        
         mask = torch.from_numpy(np.array(mask)).float()
 
         return image, mask
