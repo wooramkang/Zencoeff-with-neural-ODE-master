@@ -25,9 +25,9 @@ trainset = GLaSDataLoader((25, 25), dataset_repeat=1, images=train_img_idr, mask
 valset = GLaSDataLoader((25, 25), dataset_repeat=1, images=val_img_idr, masks=val_mask_idr ,validation=True, Image_fname ='/project/NANOSCOPY/Submit/Submit/image_integ_val/',
                         Mask_fname ='/project/NANOSCOPY/Submit/Submit/Zen_integ_val/')
 BATCH_SIZE = 3 # The Auther of the paper neural ODE said training with batch is not sure 
-VAL_BATCH_SIZE = 500
-trainloader = torch.utils.data.DataLoader(trainset, batch_size=BATCH_SIZE, shuffle=True, num_workers=4)
-valloader = torch.utils.data.DataLoader(valset, batch_size=VAL_BATCH_SIZE, shuffle=True, num_workers=4)
+VAL_BATCH_SIZE = 1000
+trainloader = torch.utils.data.DataLoader(trainset, batch_size=BATCH_SIZE, shuffle=True, num_workers=2)
+valloader = torch.utils.data.DataLoader(valset, batch_size=VAL_BATCH_SIZE, shuffle=True, num_workers=2)
 
 i = 1
 tfboard_path = 'runs/new_zernik_coff_' + str(i)
@@ -101,13 +101,8 @@ def run(lr, epochs=100):
             running_loss += loss.item() * accumulate_batch
             #running_loss += RMSEloss.item() * accumulate_batch
             if (count % step_size) == 0:
-                #print((running_loss / e_count)/BATCH_SIZE)
+                print((running_loss / e_count)/BATCH_SIZE)
                 writer.add_scalar('training_loss', (running_loss / e_count)/BATCH_SIZE, (count/step_size) )
-
-                #if prev_loss >= ((running_loss / e_count)/BATCH_SIZE):
-                    #print("model saved")
-                    #torch.save(net, filename)
-                    #prev_loss = ((running_loss / e_count)/BATCH_SIZE)
 
                 running_loss = 0.0
                 e_count = 0
@@ -123,9 +118,8 @@ def run(lr, epochs=100):
                         inputs, labels = data[0].cuda(), data[1].cuda()
                         outputs = net(inputs)
                         #print(outputs.cpu().clone().numpy().shape)
-                        loss = criterion(outputs, labels)
-                        RMSEloss = torch.sqrt(MSE(outputs, labels))
-                        
+                        loss = val_criterion(outputs, labels)
+                        RMSEloss = torch.sqrt(MSE(outputs, labels))                        
                         outputs = outputs.cpu().clone().numpy()
                         outputs = (outputs + 1) / 2
                         outputs = torch.from_numpy(outputs).float()

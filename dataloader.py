@@ -46,7 +46,7 @@ class GLaSDataLoader(object):
     def img_open(self, image, mask):
         image = np.load(image)
         img_shape = image.shape
-        print(img_shape)
+        #print(img_shape)
         file = open(mask, 'r')
         mask =  str(file.readline())[:-2].split(',')
         file.close()

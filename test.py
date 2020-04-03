@@ -20,8 +20,9 @@ train_mask_idr = os.listdir('/project/NANOSCOPY/Submit/Submit/Zen_integ/')
 val_img_idr = os.listdir('/project/NANOSCOPY/Submit/Submit/image_integ_val/')
 val_mask_idr = os.listdir('/project/NANOSCOPY/Submit/Submit/Zen_integ_val/')
 
-valset = GLaSDataLoader((25, 25), dataset_repeat=1, images=val_img_idr, masks=val_mask_idr ,validation=True, Image_fname ='val_Zernik_images/', Mask_fname ='val_Zernik_label/')
-VAL_BATCH_SIZE = 50
+valset = GLaSDataLoader((25, 25), dataset_repeat=1, images=val_img_idr, masks=val_mask_idr ,validation=True, Image_fname ='/project/NANOSCOPY/Submit/Submit/image_integ_val/',
+                        Mask_fname ='/project/NANOSCOPY/Submit/Submit/Zen_integ_val/')
+VAL_BATCH_SIZE = 1000
 valloader = torch.utils.data.DataLoader(valset, batch_size=VAL_BATCH_SIZE, shuffle=True, num_workers=4)
 
 #try:
@@ -29,7 +30,7 @@ device = torch.device('cuda')
 #except:
     #device = torch.device('cpu')
 output_dim = 28
-net = ConvODEUNet(num_filters=32, output_dim=output_dim, time_dependent=True, non_linearity='lrelu', adjoint=True, tol=1e-9)
+net = ConvODEUNet(num_filters=32, output_dim=output_dim, time_dependent=True, non_linearity='lrelu', adjoint=True, tol=1e-7)
 net.to(device)
 
 for m in net.modules():
@@ -50,10 +51,12 @@ torch.backends.cudnn.benchmark = True
 losses = []
 val_losses = []
 nfe = [[],[],[],[],[],[],[],[],[]]# if TRAIN_UNODE else None
+
 i = 1
-tfboard_path = 'runs/new_zernik_coff_' + str(i)
+tfboard_path = 'runs/new_zernik_coff_val_' + str(i)
 
 from torch.nn.functional import cosine_similarity
+filename = 'best_retriaval_model.pt'
 
 try:
     net = torch.load(filename)
@@ -117,7 +120,6 @@ def run(lr, epochs=1):
             running_loss += loss.item()
             total_RMSE += RMSEloss.item()
 
-            
         zen_coff_GT = [ (i-min(zen_coff_GT)) /  (max(zen_coff_GT) - min(zen_coff_GT) ) for i in zen_coff_GT]
         zen_coff_output = [ (i-min(zen_coff_output) ) / (max(zen_coff_output) - min(zen_coff_output)) for i in zen_coff_output]
         err_dist = [ i/ (len(valloader)/ VAL_BATCH_SIZE) for i in err_dist ]
@@ -129,23 +131,22 @@ def run(lr, epochs=1):
         plt.plot(axis_x[0:100], err_dist[0:100])
         plt.savefig("MSE.png")
         plt.show()
-
+        Zen_range = range(0,28)
         plt.figure()
         plt.subplot(211)
-        plt.plot(range(0,10), zen_coff_output, label='output')
+        plt.plot(Zen_range, zen_coff_output, label='output')
         plt.subplot(212)
-        plt.plot(range(0,10), zen_coff_GT, label='GT')
         plt.savefig("output_GT_sep_dist.png")
         plt.show()
 
         plt.figure()
-        plt.plot(range(0,10), zen_coff_output, color='r', label ='output')
-        plt.plot(range(0,10), zen_coff_GT, color='b', label='GT')
+        plt.plot(Zen_range, zen_coff_output, color='r', label ='output')
+        plt.plot(Zen_range, zen_coff_GT, color='b', label='GT')
         plt.savefig("output_GT_with_dist.png")
         plt.show()
 
         plt.figure()
-        plt.plot(range(0,10), zen_error, color='r', label ='err')
+        plt.plot(Zen_range, zen_error, color='r', label ='err')
         plt.savefig("output_GT_with_error.png")
         plt.show()
                             
