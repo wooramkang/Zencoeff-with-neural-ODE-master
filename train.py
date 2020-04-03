@@ -4,6 +4,7 @@ import random
 from torch.utils.tensorboard import SummaryWriter
 import torch
 import torch.utils.data
+import torch.nn as nn
 
 import PIL
 import skimage.measure
@@ -51,9 +52,18 @@ def count_parameters(model):
 
 print(count_parameters(net))
 
+class RMSELoss(nn.Module):
+    def __init__(self):
+        super().__init__()
+        self.mse = nn.MSELoss()
+        
+    def forward(self,yhat,y):
+        return torch.sqrt(self.mse(yhat,y))
+
 criterion = torch.nn.BCEWithLogitsLoss()
 val_criterion = torch.nn.BCEWithLogitsLoss()
 MSE = torch.nn.MSELoss()
+RMSE = RMSELoss()
 optimizer = torch.optim.Adam(net.parameters(), lr=1e-4)
 torch.backends.cudnn.benchmark = True
 
@@ -88,9 +98,10 @@ def run(lr, epochs=100):
             count = count + 1
             inputs, labels = data[0].cuda(), data[1].cuda()
             outputs = net(inputs)
-            loss = criterion(outputs, labels) / accumulate_batch
-            #RMSEloss = torch.sqrt(MSE(outputs, labels)) #/ accumulate_batch                       
-            #RMSEloss.backward()
+            #loss = criterion(outputs, labels) / accumulate_batch
+            loss = RMSE(outputs, labels)
+            loss.backward()
+            
             loss.backward()
             accumulated += 1
             if accumulated == accumulate_batch:
@@ -119,7 +130,7 @@ def run(lr, epochs=100):
                         outputs = net(inputs)
                         #print(outputs.cpu().clone().numpy().shape)
                         loss = val_criterion(outputs, labels)
-                        RMSEloss = torch.sqrt(MSE(outputs, labels))                        
+                        RMSE_loss = RMSELoss(outputs, labels)                       
                         outputs = outputs.cpu().clone().numpy()
                         outputs = (outputs + 1) / 2
                         outputs = torch.from_numpy(outputs).float()
@@ -128,12 +139,10 @@ def run(lr, epochs=100):
                         labels = torch.from_numpy(labels).float()
                         cos_similarity = cosine_similarity(outputs, labels, dim=1)
                         cos_similarity = cos_similarity.cpu().clone().numpy()
-                        #print(cos_similarity)
                         cos_similarity = np.sum(np.absolute(cos_similarity))/ VAL_BATCH_SIZE
-                        #print(cos_similarity)
                         cos_all = cos_all + cos_similarity
                         running_loss += loss.item()
-                        total_RMSE += RMSEloss.item()
+                        total_RMSE += RMSE_loss.item()
 
                     cos_all = cos_all / len(valloader)
                     print(cos_all)
@@ -145,7 +154,7 @@ def run(lr, epochs=100):
                     if prev_loss >= (total_RMSE / len(valloader)):
                         print("model saved")
                         torch.save(net, filename)
-                        prev_loss = (running_loss / len(valloader))
+                        prev_loss = (total_RMSE / len(valloader))
                 
 lr = 1e-3
 #epochs = 600 - len(losses)

@@ -79,9 +79,9 @@ def min_num(a, b):
         return a
 
 def run(lr, epochs=1):
-    zen_coff_GT = [0 for i in range(10)]
-    zen_coff_output = [0 for i in range(10)]
-    zen_error = [0 for i in range(10)]
+    zen_coff_GT = [0 for i in range(28)]
+    zen_coff_output = [0 for i in range(28)]
+    zen_error = [0 for i in range(28)]
     err_dist = [ 0 for i in range(1000)]
 
     accumulated = 0
@@ -110,9 +110,9 @@ def run(lr, epochs=1):
             outputs = outputs.cpu().clone().numpy()
             labels = labels.cpu().clone().numpy()
             for idx in range(outputs.shape[0]):
-                zen_coff_GT = [ zen_coff_GT[i] + labels[idx][i] for i in range(10)]
-                zen_coff_output = [zen_coff_output[i] + outputs[idx][i] for i in range(10)]
-                zen_error = [ zen_error[i] + (labels[idx][i] - outputs[idx][i])  for i in range(10)]
+                zen_coff_GT = [ zen_coff_GT[i] + labels[idx][i] for i in range(28)]
+                zen_coff_output = [zen_coff_output[i] + outputs[idx][i] for i in range(28)]
+                zen_error = [ zen_error[i] + (labels[idx][i] - outputs[idx][i])  for i in range(28)]
 
             if int(mseloss.item() * 1000) <= 1000:
                 err_dist[int(mseloss.item() * 1000)] = err_dist[ int(mseloss.item() * 1000)] + 1
@@ -123,7 +123,7 @@ def run(lr, epochs=1):
         zen_coff_GT = [ (i-min(zen_coff_GT)) /  (max(zen_coff_GT) - min(zen_coff_GT) ) for i in zen_coff_GT]
         zen_coff_output = [ (i-min(zen_coff_output) ) / (max(zen_coff_output) - min(zen_coff_output)) for i in zen_coff_output]
         err_dist = [ i/ (len(valloader)/ VAL_BATCH_SIZE) for i in err_dist ]
-        zen_error = [ (i / len(valloader)) ** 2 for i in zen_error ]
+        zen_error = zen_coff_GT - zen_coff_output
 
         import matplotlib.pyplot as plt
         axis_x = [ i/1000 for i in range(1000)]
