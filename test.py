@@ -4,7 +4,7 @@ import random
 from torch.utils.tensorboard import SummaryWriter
 import torch
 import torch.utils.data
-
+import torch.nn as nn
 import PIL
 import skimage.measure
 import numpy as np
@@ -42,10 +42,18 @@ def count_parameters(model):
     return sum(p.numel() for p in model.parameters() if p.requires_grad)
 
 print(count_parameters(net))
+class RMSELoss(nn.Module):
+    def __init__(self):
+        super().__init__()
+        self.mse = nn.MSELoss()
+        
+    def forward(self,yhat,y):
+        return torch.sqrt(self.mse(yhat,y))
 
 criterion = torch.nn.BCEWithLogitsLoss()
 val_criterion = torch.nn.BCEWithLogitsLoss()
 MSE = torch.nn.MSELoss()
+RMSE = RMSELoss()
 optimizer = torch.optim.Adam(net.parameters(), lr=1e-4)
 torch.backends.cudnn.benchmark = True
 losses = []
@@ -71,7 +79,7 @@ def run(lr, epochs=1):
     zen_coff_GT = [0 for i in range(28)]
     zen_coff_output = [0 for i in range(28)]
     zen_error = [0 for i in range(28)]
-    err_dist = [ 0 for i in range(1000)]
+    err_dist = [ 0 for i in range(10000)]
 
     accumulated = 0
     step_size = 10
@@ -94,42 +102,42 @@ def run(lr, epochs=1):
             outputs = net(inputs)
             loss = criterion(outputs, labels)
             mseloss = MSE(outputs, labels)
-            RMSEloss = torch.sqrt(mseloss)
+            RMSEloss = RMSE(outputs, labels)
 
             outputs = outputs.cpu().clone().numpy()
             labels = labels.cpu().clone().numpy()
             for idx in range(outputs.shape[0]):
                 zen_coff_GT = [ zen_coff_GT[i] + labels[idx][i] for i in range(28)]
                 zen_coff_output = [zen_coff_output[i] + outputs[idx][i] for i in range(28)]
-                zen_error = [ zen_error[i] + ((labels[idx][i] - outputs[idx][i])**2)  for i in range(28)]
+                zen_error = [ zen_error[i] + np.abs(labels[idx][i] - outputs[idx][i])  for i in range(28)]            
 
-            if int(mseloss.item() * 1000) <= 1000:
-                err_dist[int(mseloss.item() * 1000)] = err_dist[ int(mseloss.item() * 1000)] + 1
+            err_dist[int(RMSEloss.item() * 1000)] = err_dist[ int(RMSEloss.item() * 1000)] + 1
+                
+        zen_error = [ i / len(valloader)  for i in zen_error ]        
+        max_GT = max(zen_coff_output)
+        min_GT = min(zen_coff_output)
+        zen_coff_output = [ 2 * ((i - min_GT ) / (max_GT - min_GT)) - 1 for i in zen_coff_output]
+        zen_coff_GT = [ 2 * ((i - min_GT) /  (max_GT - min_GT)) - 1 for i in zen_coff_GT]
 
-            running_loss += loss.item()
-            total_RMSE += RMSEloss.item()
-
-        zen_coff_GT = [ (i-min(zen_coff_GT)) /  (max(zen_coff_GT) - min(zen_coff_GT) ) for i in zen_coff_GT]
-        zen_coff_output = [ (i-min(zen_coff_output) ) / (max(zen_coff_output) - min(zen_coff_output)) for i in zen_coff_output]
-
-        err_dist = [ i/ (len(valloader)/ VAL_BATCH_SIZE) for i in err_dist ]
+        err_dist = [ i/ len(valloader) for i in err_dist ]
         err_dist = np.array(err_dist)
         err_dist = err_dist - min(err_dist)
-        err_dist = err_dist / ( max(err_dist) - min(err_dist))        
+        err_dist = err_dist / (max(err_dist) - min(err_dist))        
+        
         poi_dist = [0 for i in range(1000)]
-        for s in range(1000):
+        for s in range(10000):
             s = np.random.poisson(16)/ 3125
             poi_dist[int(s*1000)] = poi_dist[int(s*1000)] + 1
         poi_dist = np.array(poi_dist)
         poi_dist = poi_dist - min(poi_dist)
         poi_dist = poi_dist / (max(poi_dist) - min(poi_dist))
+
         #zen_error = zen_coff_GT - zen_coff_output
 
-        import matplotlib.pyplot as plt
         axis_x = [ i/1000 for i in range(1000)]
         plt.figure()
-        plt.plot(axis_x[0:300], err_dist[0:300], color='r', label ='loss with noise')
-        plt.plot(axis_x[0:300], poi_dist[0:300], color='b', label ='poi_noise')
+        plt.plot(axis_x[0:1000], err_dist[0:1000], color='r', label ='loss with noise')
+        plt.plot(axis_x[0:1000], poi_dist[0:1000], color='b', label ='poisson_noise')
         plt.savefig("Error_dist.png")
         plt.show()
 
@@ -143,7 +151,7 @@ def run(lr, epochs=1):
 
         plt.figure()
         plt.plot(Zen_range, zen_error, color='r', label ='err')
-        plt.savefig("output_GT_with_error.png")
+        plt.savefig("output_GT_with_MAE.png")
         plt.show()
                             
 lr = 1e-3
