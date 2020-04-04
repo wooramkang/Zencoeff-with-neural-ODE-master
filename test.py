@@ -128,7 +128,7 @@ def run(lr, epochs=1):
         import matplotlib.pyplot as plt
         axis_x = [ i/1000 for i in range(1000)]
         plt.figure()
-        plt.plot(axis_x[0:100], err_dist[0:100])
+        plt.plot(axis_x[0:1000], err_dist[0:1000])
         plt.savefig("MSE.png")
         plt.show()
         Zen_range = range(0,28)
