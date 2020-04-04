@@ -67,17 +67,6 @@ except:
 accumulate_batch = 1  # mini-batch size by gradient accumulation
 accumulated = 0
 
-def max_num(a, b):
-    if a > b:
-        return a
-    else:
-        return b
-def min_num(a, b):
-    if a > b:
-        return b
-    else:
-        return a
-
 def run(lr, epochs=1):
     zen_coff_GT = [0 for i in range(28)]
     zen_coff_output = [0 for i in range(28)]
@@ -85,7 +74,7 @@ def run(lr, epochs=1):
     err_dist = [ 0 for i in range(1000)]
 
     accumulated = 0
-    step_size = 100
+    step_size = 10
     count_step = 0
 
     for param_group in optimizer.param_groups:
@@ -112,7 +101,7 @@ def run(lr, epochs=1):
             for idx in range(outputs.shape[0]):
                 zen_coff_GT = [ zen_coff_GT[i] + labels[idx][i] for i in range(28)]
                 zen_coff_output = [zen_coff_output[i] + outputs[idx][i] for i in range(28)]
-                zen_error = [ zen_error[i] + (labels[idx][i] - outputs[idx][i])  for i in range(28)]
+                zen_error = [ zen_error[i] + ((labels[idx][i] - outputs[idx][i])**2)  for i in range(28)]
 
             if int(mseloss.item() * 1000) <= 1000:
                 err_dist[int(mseloss.item() * 1000)] = err_dist[ int(mseloss.item() * 1000)] + 1
@@ -122,22 +111,29 @@ def run(lr, epochs=1):
 
         zen_coff_GT = [ (i-min(zen_coff_GT)) /  (max(zen_coff_GT) - min(zen_coff_GT) ) for i in zen_coff_GT]
         zen_coff_output = [ (i-min(zen_coff_output) ) / (max(zen_coff_output) - min(zen_coff_output)) for i in zen_coff_output]
+
         err_dist = [ i/ (len(valloader)/ VAL_BATCH_SIZE) for i in err_dist ]
-        zen_error = zen_coff_GT - zen_coff_output
+        err_dist = np.array(err_dist)
+        err_dist = err_dist - min(err_dist)
+        err_dist = err_dist / ( max(err_dist) - min(err_dist))        
+        poi_dist = [0 for i in range(1000)]
+        for s in range(1000):
+            s = np.random.poisson(16)/ 3125
+            poi_dist[int(s*1000)] = poi_dist[int(s*1000)] + 1
+        poi_dist = np.array(poi_dist)
+        poi_dist = poi_dist - min(poi_dist)
+        poi_dist = poi_dist / (max(poi_dist) - min(poi_dist))
+        #zen_error = zen_coff_GT - zen_coff_output
 
         import matplotlib.pyplot as plt
         axis_x = [ i/1000 for i in range(1000)]
         plt.figure()
-        plt.plot(axis_x[0:1000], err_dist[0:1000])
-        plt.savefig("MSE.png")
+        plt.plot(axis_x[0:300], err_dist[0:300], color='r', label ='loss with noise')
+        plt.plot(axis_x[0:300], poi_dist[0:300], color='b', label ='poi_noise')
+        plt.savefig("Error_dist.png")
         plt.show()
+
         Zen_range = range(0,28)
-        plt.figure()
-        plt.subplot(211)
-        plt.plot(Zen_range, zen_coff_output, label='output')
-        plt.subplot(212)
-        plt.savefig("output_GT_sep_dist.png")
-        plt.show()
 
         plt.figure()
         plt.plot(Zen_range, zen_coff_output, color='r', label ='output')
