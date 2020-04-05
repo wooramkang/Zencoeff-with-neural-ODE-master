@@ -25,7 +25,7 @@ trainset = GLaSDataLoader((25, 25), dataset_repeat=1, images=train_img_idr, mask
                         Mask_fname ='/project/NANOSCOPY/Submit/Submit/Zen_integ/')
 valset = GLaSDataLoader((25, 25), dataset_repeat=1, images=val_img_idr, masks=val_mask_idr ,validation=True, Image_fname ='/project/NANOSCOPY/Submit/Submit/image_integ_val/',
                         Mask_fname ='/project/NANOSCOPY/Submit/Submit/Zen_integ_val/')
-BATCH_SIZE = 30 # The Auther of the paper neural ODE said training with batch is not sure, so use small size of batch
+BATCH_SIZE = 300 # The Auther of the paper neural ODE said training with batch is not sure, so use small size of batch
 VAL_BATCH_SIZE = 1000
 trainloader = torch.utils.data.DataLoader(trainset, batch_size=BATCH_SIZE, shuffle=True, num_workers=2)
 valloader = torch.utils.data.DataLoader(valset, batch_size=VAL_BATCH_SIZE, shuffle=True, num_workers=2)
@@ -80,7 +80,7 @@ accumulated = 0
 
 def run(lr, epochs=100):
     accumulated = 0
-    step_size = 400
+    step_size = 30
     for param_group in optimizer.param_groups:
         param_group['lr'] = lr
     count = 0
@@ -99,55 +99,55 @@ def run(lr, epochs=100):
             outputs = net(inputs)
             loss = RMSE(outputs, labels)
             loss.backward()
-            
+            running_loss += loss.item() * accumulate_batch
             accumulated += 1
+
             if accumulated == accumulate_batch:
                 optimizer.step()
                 optimizer.zero_grad()
                 accumulated = 0
-
-            running_loss += loss.item() * accumulate_batch
-            if (count % step_size) == 0:
-                print((running_loss / e_count)/BATCH_SIZE)
-                writer.add_scalar('training_loss', (running_loss / e_count)/BATCH_SIZE, (count/step_size) )
-
-                running_loss = 0.0
-                e_count = 0
-                cos_all = 0
-
-                # validation loop
-                with torch.no_grad():
-                    running_loss = 0.0
-                    total_RMSE = 0.0
-
-                    for data in valloader:
-                        inputs, labels = data[0].cuda(), data[1].cuda()
-                        outputs = net(inputs)                        
-                        loss = RMSELoss(outputs, labels)                       
-                        total_RMSE += loss.item()
-
-                        outputs = outputs.cpu().clone().numpy()
-                        outputs = (outputs + 1) / 2
-                        outputs = torch.from_numpy(outputs).float()
-                        labels = labels.cpu().clone().numpy()
-                        labels = (labels + 1) / 2
-                        labels = torch.from_numpy(labels).float()
-                        cos_similarity = cosine_similarity(outputs, labels, dim=1)
-                        cos_similarity = cos_similarity.cpu().clone().numpy()
-                        cos_similarity = np.sum(np.absolute(cos_similarity))/ VAL_BATCH_SIZE
-                        cos_all = cos_all + cos_similarity
-                    
-                    cos_all = cos_all / (len(valloader) / VAL_BATCH_SIZE)
-                    print(cos_all)
-
-                    writer.add_scalar('validation_loss', total_RMSE / (len(valloader) / VAL_BATCH_SIZE), (count/step_size) )
-                    writer.add_scalar('cosine_similarity', cos_all, (count/step_size))
-
-                    if prev_loss >= (total_RMSE / (len(valloader) / VAL_BATCH_SIZE) ):
-                        print("model saved")
-                        torch.save(net, filename)
-                        prev_loss = (total_RMSE / (len(valloader) / VAL_BATCH_SIZE) )
                 
+                if (count % step_size) == 0:
+                    print((running_loss / e_count)/BATCH_SIZE)
+                    writer.add_scalar('training_loss', (running_loss / e_count)/BATCH_SIZE, (count/step_size) )
+
+                    running_loss = 0.0
+                    e_count = 0
+
+                    # validation loop
+                    with torch.no_grad():
+                        running_loss = 0.0
+                        total_RMSE = 0.0
+                        cos_all = 0
+
+                        for data in valloader:
+                            inputs, labels = data[0].cuda(), data[1].cuda()
+                            outputs = net(inputs)                        
+                            loss = RMSE(outputs, labels)                       
+                            total_RMSE += loss.item()
+
+                            outputs = outputs.cpu().clone().numpy()
+                            outputs = (outputs + 1) / 2
+                            outputs = torch.from_numpy(outputs).float()
+                            labels = labels.cpu().clone().numpy()
+                            labels = (labels + 1) / 2
+                            labels = torch.from_numpy(labels).float()
+                            cos_similarity = cosine_similarity(outputs, labels, dim=1)
+                            cos_similarity = cos_similarity.cpu().clone().numpy()
+                            cos_similarity = np.sum(np.absolute(cos_similarity))/ VAL_BATCH_SIZE
+                            cos_all = cos_all + cos_similarity
+                        
+                        cos_all = cos_all / (len(valloader) / VAL_BATCH_SIZE)
+                        print(cos_all)
+
+                        writer.add_scalar('validation_loss', total_RMSE / (len(valloader) / VAL_BATCH_SIZE), (count/step_size) )
+                        writer.add_scalar('cosine_similarity', cos_all, (count/step_size))
+
+                        if prev_loss >= (total_RMSE / (len(valloader) / VAL_BATCH_SIZE) ):
+                            print("model saved")
+                            torch.save(net, filename)
+                            prev_loss = (total_RMSE / (len(valloader) / VAL_BATCH_SIZE) )
+                    
 lr = 1e-3
 epochs = 100
 run(lr, epochs)

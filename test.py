@@ -30,7 +30,7 @@ device = torch.device('cuda')
 #except:
     #device = torch.device('cpu')
 output_dim = 28
-net = ConvODEUNet(num_filters=32, output_dim=output_dim, time_dependent=True, non_linearity='lrelu', adjoint=True, tol=1e-7)
+net = ConvODEUNet(num_filters=32, output_dim=output_dim, time_dependent=True, non_linearity='lrelu', adjoint=True, tol=1e-5)
 net.to(device)
 
 for m in net.modules():
