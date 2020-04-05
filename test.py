@@ -75,87 +75,85 @@ except:
 accumulate_batch = 1  # mini-batch size by gradient accumulation
 accumulated = 0
 
-def run(lr, epochs=1):
-    zen_coff_GT = [0 for i in range(28)]
-    zen_coff_output = [0 for i in range(28)]
-    zen_error = [0 for i in range(28)]
-    err_dist = [ 0 for i in range(10000)]
 
-    accumulated = 0
-    step_size = 10
-    count_step = 0
+zen_coff_GT = [0 for i in range(28)]
+zen_coff_output = [0 for i in range(28)]
+zen_error = [0 for i in range(28)]
+err_dist = [ 0 for i in range(10000)]
 
-    for param_group in optimizer.param_groups:
-        param_group['lr'] = lr
-    count = 0
-    prev_loss = 10000000
-    running_loss = 0.0
-    total_RMSE = 0.0
+accumulated = 0
+step_size = 10
+count_step = 0
 
-    with torch.no_grad():
-        for data in valloader:
-            count_step = count_step + 1
-            if (count_step % step_size) == 0:
-                print(count_step)
+count = 0
+running_loss = 0.0
+total_RMSE = 0.0
 
-            inputs, labels = data[0].cuda(), data[1].cuda()
-            outputs = net(inputs)
-            loss = criterion(outputs, labels)
-            mseloss = MSE(outputs, labels)
-            RMSEloss = RMSE(outputs, labels)
-
-            outputs = outputs.cpu().clone().numpy()
-            labels = labels.cpu().clone().numpy()
-            for idx in range(outputs.shape[0]):
-                zen_coff_GT = [ zen_coff_GT[i] + labels[idx][i] for i in range(28)]
-                zen_coff_output = [zen_coff_output[i] + outputs[idx][i] for i in range(28)]
-                zen_error = [ zen_error[i] + np.abs(labels[idx][i] - outputs[idx][i])  for i in range(28)]            
-
-            err_dist[int(RMSEloss.item() * 1000)] = err_dist[ int(RMSEloss.item() * 1000)] + 1
-                
-        zen_error = [ i / len(valloader)  for i in zen_error ]        
-        max_GT = max(zen_coff_output)
-        min_GT = min(zen_coff_output)
-        zen_coff_output = [ 2 * ((i - min_GT ) / (max_GT - min_GT)) - 1 for i in zen_coff_output]
-        zen_coff_GT = [ 2 * ((i - min_GT) /  (max_GT - min_GT)) - 1 for i in zen_coff_GT]
-
-        err_dist = [ i/ len(valloader) for i in err_dist ]
-        err_dist = np.array(err_dist)
-        err_dist = err_dist - min(err_dist)
-        err_dist = err_dist / (max(err_dist) - min(err_dist))        
-        
-        poi_dist = [0 for i in range(1000)]
-        for s in range(10000):
-            s = np.random.poisson(16)/ 3125
-            poi_dist[int(s*1000)] = poi_dist[int(s*1000)] + 1
-        poi_dist = np.array(poi_dist)
-        poi_dist = poi_dist - min(poi_dist)
-        poi_dist = poi_dist / (max(poi_dist) - min(poi_dist))
-
-        #zen_error = zen_coff_GT - zen_coff_output
-
-        axis_x = [ i/1000 for i in range(1000)]
-        plt.figure()
-        plt.plot(axis_x[0:1000], err_dist[0:1000], color='r', label ='loss with noise')
-        plt.plot(axis_x[0:1000], poi_dist[0:1000], color='b', label ='poisson_noise')
-        plt.savefig("Error_dist.png")
-        plt.show()
-
-        Zen_range = range(0,28)
-
-        plt.figure()
-        plt.plot(Zen_range, zen_coff_output, color='r', label ='output')
-        plt.plot(Zen_range, zen_coff_GT, color='b', label='GT')
-        plt.savefig("output_GT_with_dist.png")
-        plt.show()
-
-        plt.figure()
-        plt.plot(Zen_range, zen_error, color='r', label ='err')
-        plt.savefig("output_GT_with_MAE.png")
-        plt.show()
-                            
 lr = 1e-3
-#epochs = 600 - len(losses)
-#lr = 1e-6
-epochs = 1
-run(lr, epochs)
+for param_group in optimizer.param_groups:
+    param_group['lr'] = lr
+
+with torch.no_grad():
+    for data in valloader:
+        count_step = count_step + 1
+        if (count_step % step_size) == 0:
+            print(count_step)
+
+        inputs, labels = data[0].cuda(), data[1].cuda()
+        outputs = net(inputs)
+        MSEloss = MSE (outputs, labels)
+        #RMSEloss = RMSE(outputs, labels)
+
+        outputs = outputs.cpu().clone().numpy()
+        labels = labels.cpu().clone().numpy()
+        for idx in range(outputs.shape[0]):
+            zen_coff_GT = [ zen_coff_GT[i] + labels[idx][i] for i in range(28)]
+            zen_coff_output = [zen_coff_output[i] + outputs[idx][i] for i in range(28)]
+            zen_error = [ zen_error[i] + np.abs(labels[idx][i] - outputs[idx][i])  for i in range(28)]            
+
+        err_dist[int(MSEloss.item() * 1000)] = err_dist[ int(MSEloss.item() * 1000)] + 1
+            
+    zen_error = [ i / len(valloader)  for i in zen_error ]        
+    max_GT = max(zen_coff_output)
+    min_GT = min(zen_coff_output)
+    #zen_coff_output = [ 2 * ((i - min_GT ) / (max_GT - min_GT)) - 1 for i in zen_coff_output]
+    #zen_coff_GT = [ 2 * ((i - min_GT) /  (max_GT - min_GT)) - 1 for i in zen_coff_GT]
+
+    err_dist = [ i/ len(valloader) for i in err_dist ]
+    err_dist = np.array(err_dist)
+    #err_dist = err_dist - min(err_dist)
+    #err_dist = err_dist / (max(err_dist) - min(err_dist))        
+
+    poi_dist = [0 for i in range(1000)]
+    for s in range(10000):
+        s = np.random.poisson(16)/ 3125
+        poi_dist[int(s*1000)] = poi_dist[int(s*1000)] + 1
+    poi_dist = np.array(poi_dist)
+    #poi_dist = poi_dist - min(poi_dist)
+    #poi_dist = poi_dist / (max(poi_dist) - min(poi_dist))
+
+    axis_x = [ i/1000 for i in range(1000)]
+    plt.figure()
+    plt.plot(axis_x[0:1000], err_dist[0:1000], color='r', label ='loss with noise')
+    plt.plot(axis_x[0:1000], poi_dist[0:1000], color='b', label ='poisson_noise')
+    plt.savefig("output_error_dist.png")
+    plt.show()
+
+    plt.figure()
+    plt.plot(axis_x[0:1000], err_dist[0:1000], color='r', label ='loss with noise')
+    plt.savefig("output_only_error_dist.png")
+    plt.show()
+
+    Zen_range = range(0,28)
+
+    plt.figure()
+    plt.plot(Zen_range, zen_coff_output, color='r', label ='output')
+    plt.plot(Zen_range, zen_coff_GT, color='b', label='GT')
+    plt.savefig("output_GT_with_dist.png")
+    plt.show()
+
+    plt.figure()
+    plt.plot(Zen_range, zen_error, color='r', label ='err')
+    plt.savefig("output_GT_with_MAE.png")
+    plt.show()
+                    
