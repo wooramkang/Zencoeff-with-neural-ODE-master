@@ -94,8 +94,8 @@ class ConvODEUNet(nn.Module):
         self.odeblock_up4 = ODEBlock(ode_up4, tol=tol, adjoint=adjoint)
         '''
         self.dense = nn.Linear(nf * (2**4) , nf * (2**4))
-        self.preoutput = nn.Linear(nf * (2**4), output_dim)
-        self.finaloutput = nn.Linear(output_dim, output_dim)
+        self.preoutput = nn.Linear(nf * (2**4), nf * (2**2))
+        self.finaloutput = nn.Linear(nf * (2**2), output_dim)
         self.tanh = nn.Tanh()
         self.flatten = nn.Flatten()
         self.non_linearity = get_nonlinearity(non_linearity)

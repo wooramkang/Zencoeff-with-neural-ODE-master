@@ -22,11 +22,13 @@ val_img_idr = os.listdir('/project/NANOSCOPY/Submit/Submit/image_integ_val/')
 val_mask_idr = os.listdir('/project/NANOSCOPY/Submit/Submit/Zen_integ_val/')
 
 trainset = GLaSDataLoader((25, 25), dataset_repeat=1, images=train_img_idr, masks=train_mask_idr, Image_fname ='/project/NANOSCOPY/Submit/Submit/image_integ/', 
-                        Mask_fname ='/project/NANOSCOPY/Submit/Submit/Zen_integ/')
+                        Mask_fname ='/project/NANOSCOPY/Submit/Submit/Zen_integ/', noise=True)
+
 valset = GLaSDataLoader((25, 25), dataset_repeat=1, images=val_img_idr, masks=val_mask_idr ,validation=True, Image_fname ='/project/NANOSCOPY/Submit/Submit/image_integ_val/',
-                        Mask_fname ='/project/NANOSCOPY/Submit/Submit/Zen_integ_val/')
-BATCH_SIZE = 300 # The Auther of the paper neural ODE said training with batch is not sure, so use small size of batch
-VAL_BATCH_SIZE = 1000
+                        Mask_fname ='/project/NANOSCOPY/Submit/Submit/Zen_integ_val/', noise=False)
+
+BATCH_SIZE = 1024 # The Auther of the paper neural ODE said training with batch is not sure, so use small size of batch
+VAL_BATCH_SIZE = 1024
 trainloader = torch.utils.data.DataLoader(trainset, batch_size=BATCH_SIZE, shuffle=True, num_workers=2)
 valloader = torch.utils.data.DataLoader(valset, batch_size=VAL_BATCH_SIZE, shuffle=True, num_workers=2)
 
@@ -38,8 +40,8 @@ writer = SummaryWriter(tfboard_path)
 device = torch.device('cuda')
 #except:
     #device = torch.device('cpu')
-output_dim = 28 # ex) 30, 28, 10, ... maximum of NOLL index 
-net = ConvODEUNet(num_filters=32, output_dim=output_dim, time_dependent=True, non_linearity='lrelu', adjoint=True, tol=1e-5)
+output_dim = 27 # ex) 30, 28, 10, ... maximum of NOLL index 
+net = ConvODEUNet(num_filters=16, output_dim=output_dim, time_dependent=True, non_linearity='lrelu', adjoint=True, tol=1e-5)
 net.to(device)
 
 for m in net.modules():
@@ -60,7 +62,7 @@ class RMSELoss(nn.Module):
     def forward(self,yhat,y):
         return torch.sqrt(self.mse(yhat,y))
 
-BCE = torch.nn.BCEWithLogitsLoss()
+#BCE = torch.nn.BCEWithLogitsLoss()
 MSE = torch.nn.MSELoss()
 RMSE = RMSELoss()
 optimizer = torch.optim.Adam(net.parameters(), lr=1e-3)
@@ -80,7 +82,7 @@ accumulated = 0
 
 def run(lr, epochs=100):
     accumulated = 0
-    step_size = 30
+    step_size = 10
     for param_group in optimizer.param_groups:
         param_group['lr'] = lr
     count = 0
@@ -101,16 +103,15 @@ def run(lr, epochs=100):
             loss.backward()
             running_loss += loss.item() * accumulate_batch
             accumulated += 1
-
+            print(loss.item())
             if accumulated == accumulate_batch:
                 optimizer.step()
                 optimizer.zero_grad()
                 accumulated = 0
                 
                 if (count % step_size) == 0:
-                    print((running_loss / e_count)/BATCH_SIZE)
+                    print((running_loss / e_count))
                     writer.add_scalar('training_loss', (running_loss / e_count)/BATCH_SIZE, (count/step_size) )
-
                     running_loss = 0.0
                     e_count = 0
 
@@ -137,16 +138,16 @@ def run(lr, epochs=100):
                             cos_similarity = np.sum(np.absolute(cos_similarity))/ VAL_BATCH_SIZE
                             cos_all = cos_all + cos_similarity
                         
-                        cos_all = cos_all / (len(valloader) / VAL_BATCH_SIZE)
+                        cos_all = cos_all / len(valloader)
                         print(cos_all)
-
-                        writer.add_scalar('validation_loss', total_RMSE / (len(valloader) / VAL_BATCH_SIZE), (count/step_size) )
+                        print(total_RMSE / len(valloader))
+                        writer.add_scalar('validation_loss', total_RMSE / len(valloader) , (count/step_size) )
                         writer.add_scalar('cosine_similarity', cos_all, (count/step_size))
 
-                        if prev_loss >= (total_RMSE / (len(valloader) / VAL_BATCH_SIZE) ):
+                        if prev_loss >= (total_RMSE / len(valloader)):
                             print("model saved")
                             torch.save(net, filename)
-                            prev_loss = (total_RMSE / (len(valloader) / VAL_BATCH_SIZE) )
+                            prev_loss = total_RMSE / len(valloader)
                     
 lr = 1e-3
 epochs = 100
